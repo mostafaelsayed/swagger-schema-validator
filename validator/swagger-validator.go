@@ -114,7 +114,7 @@ func validateArrayItems(items map[string]any, data []any, swagger map[string]map
 
 func ValidateObject(schema map[string]any, schema_name string, data any, swagger map[string]map[string]map[string]any, schema_path string) []string {
 	var errors []string
-	_, ok := data.(map[string]any)
+	data_map, ok := data.(map[string]any)
 
 	if !ok {
 		errors = append(errors, schema_path + ": type expected is object but found " + reflect.TypeOf(data).String())
@@ -122,8 +122,16 @@ func ValidateObject(schema map[string]any, schema_name string, data any, swagger
 	}
 	props, ok := schema["properties"].(map[string]any)
 	if !ok {
-		errors = append(errors, schema_path + ": missing or misformed properties definition for type object")
 		return errors
+	}
+	for prop1 := range(data_map) {
+		_, exists := props[prop1]
+		if !exists {
+			additional_exists := schema["additionalProperties"]
+			if additional_exists == nil || !additional_exists.(bool) {
+				errors = append(errors, schema_path + ": unexpected prop " + prop1)
+			}
+		}
 	}
 	for prop, val := range(props) {
 		new_schema_path := schema_path + "." + prop
