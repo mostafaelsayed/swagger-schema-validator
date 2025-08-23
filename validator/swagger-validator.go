@@ -69,6 +69,10 @@ func validateSchema(data any, swagger map[string]map[string]map[string]any, sche
 		errors = slices.Concat(errors, ValidateObject(schema, schema_name, data, swagger, schema_path))
 	case "string":
 		errors = slices.Concat(errors, validateString(data, schema_path))
+	case "integer":
+		errors = slices.Concat(errors, validateInteger(data, schema_path))
+	case "number":
+		errors = slices.Concat(errors, validateNumber(data, schema_path))
 	case "array":
 		errors = slices.Concat(errors, validateArray(data, schema, swagger, schema_path))
 	}
@@ -94,6 +98,10 @@ func validateArrayItems(items map[string]any, data []any, swagger map[string]map
 	for _, val := range(data) {
 		if items["type"] == "string" {
 			errors = slices.Concat(errors, validateString(val, schema_path))
+		} else if items["type"] == "integer" {
+			errors = slices.Concat(errors, validateInteger(val, schema_path))
+		} else if items["type"] == "number" {
+			errors = slices.Concat(errors, validateNumber(val, schema_path))
 		} else if items["$ref"] != nil {
 			ref := items["$ref"].(string)
 			ref_splitted := strings.Split(ref, "/")
@@ -133,6 +141,10 @@ func validateProp(prop string, val any, schema map[string]any, schema_name strin
 		new_val := val.(map[string]any)
 		if new_val["type"] == "string" {
 			errors = slices.Concat(errors, validateString(data, schema_path))
+		} else if new_val["type"] == "integer" {
+			errors = slices.Concat(errors, validateInteger(data, schema_path))
+		} else if new_val["type"] == "number" {
+			errors = slices.Concat(errors, validateNumber(data, schema_path))
 		} else if new_val["$ref"] != nil {
 			ref := new_val["$ref"].(string)
 			ref_splitted := strings.Split(ref, "/")
@@ -166,6 +178,31 @@ func validateString(data any, schema_path string) []string {
 	_, ok := data.(string)
 	if !ok {
 		errors = append(errors, schema_path + ": expected type string but found " + reflect.TypeOf(data).String())
+	}
+
+	return errors
+}
+
+func validateInteger(data any, schema_path string) []string {
+	errors := make([]string, 0)
+	_, ok := data.(float64)
+	if !ok {
+		errors = append(errors, schema_path + ": expected type integer but found " + reflect.TypeOf(data).String())
+	} else {
+		str_val := fmt.Sprint(data)
+		if strings.Contains(str_val, ".") {
+			errors = append(errors, schema_path + ": expected type integer but found " + reflect.TypeOf(data).String())
+		}
+	}
+
+	return errors
+}
+
+func validateNumber(data any, schema_path string) []string {
+	errors := make([]string, 0)
+	_, ok := data.(float64)
+	if !ok {
+		errors = append(errors, schema_path + ": expected type number but found " + reflect.TypeOf(data).String())
 	}
 
 	return errors
