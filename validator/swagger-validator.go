@@ -1,0 +1,171 @@
+package swagger_validator
+
+import (
+	"fmt"
+	"encoding/json"
+	"log"
+	"os"
+	"reflect"
+	"slices"
+	"strings"
+	"gopkg.in/yaml.v3"
+)
+
+func Validate(payload_file_name string, swagger_file_name string, schema_name string) {
+	log.SetPrefix("Swagger_Validator: ")
+	log.SetFlags(0)
+
+	content, err := os.ReadFile(payload_file_name)
+
+	if err != nil {
+		log.Fatal("error reading data: " + err.Error())
+	}
+
+	var data map[string]any
+	err = json.Unmarshal(content, &data)
+
+	if err != nil {
+		log.Fatal("error unmarshal data: " + err.Error())
+	}
+
+	swagger_content, yaml_err := os.ReadFile(swagger_file_name)
+
+	if yaml_err != nil {
+		log.Fatal("error reading swagger file: " + err.Error())
+	}
+
+	var swagger map[string]map[string]map[string]any
+	swagger_err := yaml.Unmarshal(swagger_content, &swagger)
+
+	if err != nil {
+		log.Fatal("error unmarshal: " + err.Error())
+	}
+
+	if swagger_err != nil {
+		log.Fatal("error unmarshal swagger: " + swagger_err.Error())
+	}
+
+	errors := validateSchema(data, swagger, schema_name)
+
+	if len(errors) > 0 {
+		log.Println("swagger errors found:")
+		for index, error := range(errors) {
+			log.Println(fmt.Sprint(index + 1) + ": " + error)
+		}
+		os.Exit(1)
+	}
+
+	log.Println("data is valid!")
+}
+
+func validateSchema(data any, swagger map[string]map[string]map[string]any, schema_name string) []string {
+	components := swagger["components"]
+	schemas := components["schemas"]
+	schema := schemas[schema_name].(map[string]any)
+	errors := make([]string, 0)
+
+	switch schema["type"] {
+	case "object":
+		errors = slices.Concat(errors, ValidateObject(schema, schema_name, data, swagger))
+	case "string":
+		errors = slices.Concat(errors, validateString(data))
+	case "array":
+		errors = slices.Concat(errors, validateArray(data, schema, swagger))
+	}
+
+	return errors
+}
+
+func validateArray(data any, schema map[string]any, swagger map[string]map[string]map[string]any) []string {
+	errors := make([]string, 0)
+	arr, ok := data.([]any)
+	if !ok {
+		errors = append(errors, "expected array but found " + reflect.TypeOf(data).String())
+		return errors
+	}
+	items := schema["items"].(map[string]any)
+	errors = slices.Concat(errors, validateArrayItems(items, arr, swagger))
+
+	return errors
+}
+
+func validateArrayItems(items map[string]any, data []any, swagger map[string]map[string]map[string]any) []string {
+	errors := make([]string, 0)
+	for _, val := range(data) {
+		if items["type"] == "string" {
+			errors = slices.Concat(errors, validateString(val))
+		} else if items["$ref"] != nil {
+			ref := items["$ref"].(string)
+			ref_splitted := strings.Split(ref, "/")
+			new_schema_name := ref_splitted[len(ref_splitted) - 1]
+			errors = slices.Concat(validateSchema(val.(map[string]any), swagger, new_schema_name))
+		}
+	}
+	return errors
+}
+
+func ValidateObject(schema map[string]any, schema_name string, data any, swagger map[string]map[string]map[string]any) []string {
+	errors := make([]string, 0)
+	data, ok := data.(map[string]any)
+
+	if !ok {
+		errors = append(errors, "type expected is object but found " + reflect.TypeOf(data).String())
+		return errors
+	}
+	props, ok := schema["properties"].(map[string]any)
+	if !ok {
+		errors = append(errors, "missing or misformed properties definition in type object")
+		return errors
+	}
+	for prop, val := range(props) { 
+		errors = slices.Concat(errors, validateProp(prop, val, schema, schema_name, swagger, data.(map[string]any)[prop]))
+	}
+
+	return errors
+}
+
+func validateProp(prop string, val any, schema map[string]any, schema_name string, swagger map[string]map[string]map[string]any, data any) []string {
+	errors := make([]string, 0)
+	if data == nil {
+		errors = slices.Concat(errors, checkObjectPropRequired(prop, schema["required"].([]any), schema_name))
+	} else {
+		new_val := val.(map[string]any)
+		if new_val["type"] == "string" {
+			errors = slices.Concat(errors, validateString(data))
+		} else if new_val["$ref"] != nil {
+			ref := new_val["$ref"].(string)
+			ref_splitted := strings.Split(ref, "/")
+			schema_name = ref_splitted[len(ref_splitted) - 1]
+			errors = slices.Concat(validateSchema(data, swagger, schema_name))
+		}
+	}
+
+	return errors
+}
+
+func checkObjectPropRequired(prop string, required []any, schema_name string) []string {
+	errors := make([]string, 0)
+	if required != nil {
+		not_exists := false
+		for _, val1 := range(required) {
+			if val1 == prop {
+				not_exists = true
+				break
+			}
+		}
+		if (not_exists) {
+			errors = append(errors, "prop " + prop + " of schema " + schema_name + " is missing but required")
+		}
+	}
+	return errors
+}
+
+func validateString(data any) []string {
+	errors := make([]string, 0)
+	_, ok := data.(string)
+	if !ok {
+		errors = append(errors, "expected type string but found " + reflect.TypeOf(data).String())
+	}
+
+	return errors
+}

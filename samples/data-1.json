@@ -1,0 +1,8 @@
+{
+    "username": 1,
+    "roles": [
+        {
+            "label": "admin"
+        }
+    ]
+}
