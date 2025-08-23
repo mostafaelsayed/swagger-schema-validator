@@ -9,6 +9,8 @@ components:
           type: string
         roles:
           $ref: "#/components/schemas/Roles"
+        job:
+          $ref: "#/components/schemas/Job"
       required:
         - username
         - password
@@ -22,6 +24,42 @@ components:
         label:
           type: string
         id:
-          type: integer
+          type: number
       required:
         - id
+    Job:
+      type: object
+      properties:
+        id:
+          type: integer
+        desc:
+          type: string
+        location:
+          $ref: "#/components/schemas/Location"
+      required:
+        - id
+        - location
+    Location:
+      type: object
+      properties:
+        id:
+          type: string
+        city:
+          type: string
+        country:
+          type: object
+          properties:
+            id:
+              type: string
+            label:
+              type: string
+              required:
+                - latitude
+                - longitude
+          required:
+            - id
+            - label
+      required:
+        - id
+        - country
+        - city
