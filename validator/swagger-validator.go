@@ -11,7 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func Validate(payload_file_name string, swagger_file_name string, schema_name string) {
+func Validate(payload_file_name string, swagger_file_name string, schema_name string) []string {
 	log.SetPrefix("Swagger_Validator: ")
 	log.SetFlags(0)
 
@@ -47,15 +47,11 @@ func Validate(payload_file_name string, swagger_file_name string, schema_name st
 
 	errors := validateSchema(data, swagger, schema_name, schema_name)
 
-	if len(errors) > 0 {
-		log.Println("swagger errors found:")
-		for index, error := range(errors) {
-			log.Println(fmt.Sprint(index + 1) + ": " + error)
-		}
-		os.Exit(1)
+	if len(errors) == 0 {
+		log.Println("data is valid!")
 	}
 
-	log.Println("data is valid!")
+	return errors
 }
 
 func validateSchema(data any, swagger map[string]map[string]map[string]any, schema_name string, schema_path string) []string {
@@ -68,11 +64,20 @@ func validateSchema(data any, swagger map[string]map[string]map[string]any, sche
 	case "object":
 		errors = ValidateObject(schema, schema_name, data, swagger, schema_path)
 	case "string":
-		errors = validateString(data, schema_path)
+		error_msg := validateString(data, schema_path)
+		if error_msg != "" {
+			errors = append(errors, error_msg)
+		}
 	case "integer":
-		errors = validateInteger(data, schema_path)
+		error_msg := validateInteger(data, schema_path)
+		if error_msg != "" {
+			errors = append(errors, error_msg)
+		}
 	case "number":
-		errors = validateNumber(data, schema_path)
+		error_msg := validateNumber(data, schema_path)
+		if error_msg != "" {
+			errors = append(errors, error_msg)
+		}
 	case "array":
 		errors = validateArray(data, schema, swagger, schema_path)
 	}
@@ -97,11 +102,20 @@ func validateArrayItems(items map[string]any, data []any, swagger map[string]map
 	var errors []string
 	for _, val := range(data) {
 		if items["type"] == "string" {
-			errors = slices.Concat(errors, validateString(val, schema_path))
+			error_msg := validateString(val, schema_path)
+			if error_msg != "" {
+				errors = append(errors, error_msg)
+			}
 		} else if items["type"] == "integer" {
-			errors = slices.Concat(errors, validateInteger(val, schema_path))
+			error_msg := validateInteger(val, schema_path)
+			if error_msg != "" {
+				errors = append(errors, error_msg)
+			}
 		} else if items["type"] == "number" {
-			errors = slices.Concat(errors, validateNumber(val, schema_path))
+			error_msg := validateNumber(val, schema_path)
+			if error_msg != "" {
+				errors = append(errors, error_msg)
+			}
 		} else if items["$ref"] != nil {
 			ref := items["$ref"].(string)
 			ref_splitted := strings.Split(ref, "/")
@@ -144,15 +158,27 @@ func ValidateObject(schema map[string]any, schema_name string, data any, swagger
 func validateProp(prop string, val any, schema map[string]any, schema_name string, swagger map[string]map[string]map[string]any, data any, schema_path string) []string {
 	var errors []string
 	if data == nil {
-		errors = checkObjectPropRequired(prop, schema["required"].([]any), schema_path)
+		error_msg := checkObjectPropRequired(prop, schema["required"].([]any), schema_path)
+		if error_msg != "" {
+			errors = append(errors, error_msg)
+		}
 	} else {
 		new_val := val.(map[string]any)
 		if new_val["type"] == "string" {
-			errors = validateString(data, schema_path)
+			error_msg := validateString(data, schema_path)
+			if error_msg != "" {
+				errors = append(errors, error_msg)
+			}
 		} else if new_val["type"] == "integer" {
-			errors = validateInteger(data, schema_path)
+			error_msg := validateInteger(data, schema_path)
+			if error_msg != "" {
+				errors = append(errors, error_msg)
+			}
 		} else if new_val["type"] == "number" {
-			errors = validateNumber(data, schema_path)
+			error_msg := validateNumber(data, schema_path)
+			if error_msg != "" {
+				errors = append(errors, error_msg)
+			}
 		} else if new_val["$ref"] != nil {
 			ref := new_val["$ref"].(string)
 			ref_splitted := strings.Split(ref, "/")
@@ -166,8 +192,8 @@ func validateProp(prop string, val any, schema map[string]any, schema_name strin
 	return errors
 }
 
-func checkObjectPropRequired(prop string, required []any, schema_path string) []string {
-	var errors []string
+func checkObjectPropRequired(prop string, required []any, schema_path string) string {
+	var error_msg string
 	if required != nil {
 		not_exists := false
 		for _, val1 := range(required) {
@@ -177,43 +203,43 @@ func checkObjectPropRequired(prop string, required []any, schema_path string) []
 			}
 		}
 		if (not_exists) {
-			errors = append(errors, schema_path + ": prop " + prop + " is missing but required")
+			error_msg =  schema_path + ": prop " + prop + " is missing but required"
 		}
 	}
-	return errors
+	return error_msg
 }
 
-func validateString(data any, schema_path string) []string {
-	var errors []string
+func validateString(data any, schema_path string) string {
+	var error_msg string = ""
 	_, ok := data.(string)
 	if !ok {
-		errors = append(errors, schema_path + ": expected type string but found " + reflect.TypeOf(data).String())
+		error_msg = schema_path + ": expected type string but found " + reflect.TypeOf(data).String()
 	}
 
-	return errors
+	return error_msg
 }
 
-func validateInteger(data any, schema_path string) []string {
-	var errors []string
+func validateInteger(data any, schema_path string) string {
+	var error_msg string
 	_, ok := data.(float64)
 	if !ok {
-		errors = append(errors, schema_path + ": expected type integer but found " + reflect.TypeOf(data).String())
+		error_msg = schema_path + ": expected type integer but found " + reflect.TypeOf(data).String()
 	} else {
 		str_val := fmt.Sprint(data)
 		if strings.Contains(str_val, ".") {
-			errors = append(errors, schema_path + ": expected type integer but found " + reflect.TypeOf(data).String())
+			error_msg = schema_path + ": expected type integer but found " + reflect.TypeOf(data).String()
 		}
 	}
 
-	return errors
+	return error_msg
 }
 
-func validateNumber(data any, schema_path string) []string {
-	var errors []string
+func validateNumber(data any, schema_path string) string {
+	var error_msg string
 	_, ok := data.(float64)
 	if !ok {
-		errors = append(errors, schema_path + ": expected type number but found " + reflect.TypeOf(data).String())
+		error_msg = schema_path + ": expected type number but found " + reflect.TypeOf(data).String()
 	}
 
-	return errors
+	return error_msg
 }
