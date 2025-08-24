@@ -83,26 +83,26 @@ func validateArray(data any, schema map[string]any, swagger map[string]map[strin
 		return errors
 	}
 	items := schema["items"].(map[string]any)
-	errors = validateArrayItems(items, arr, swagger, schema, schema_path)
+	errors = validateArrayItems(items, arr, swagger, schema_path + "[]")
 
 	return errors
 }
 
-func validateArrayItems(items map[string]any, data []any, swagger map[string]map[string]map[string]any, schema map[string]any, schema_path string) []string {
+func validateArrayItems(items map[string]any, data []any, swagger map[string]map[string]map[string]any, schema_path string) []string {
 	var errors []string
-	for _, val := range(data) {
+	for ind, val := range(data) {
 		if items["type"] == "string" {
-			error_msg := validateString(val, schema_path)
+			error_msg := validateString(val, schema_path + "[" + fmt.Sprint(ind) + "]")
 			if error_msg != "" {
 				errors = append(errors, error_msg)
 			}
 		} else if items["type"] == "integer" {
-			error_msg := validateInteger(val, schema_path)
+			error_msg := validateInteger(val, schema_path + "[" + fmt.Sprint(ind) + "]")
 			if error_msg != "" {
 				errors = append(errors, error_msg)
 			}
 		} else if items["type"] == "number" {
-			error_msg := validateNumber(val, schema_path)
+			error_msg := validateNumber(val, schema_path + "[" + fmt.Sprint(ind) + "]")
 			if error_msg != "" {
 				errors = append(errors, error_msg)
 			}
@@ -110,9 +110,9 @@ func validateArrayItems(items map[string]any, data []any, swagger map[string]map
 			ref := items["$ref"].(string)
 			ref_splitted := strings.Split(ref, "/")
 			new_schema_name := ref_splitted[len(ref_splitted) - 1]
-			errors = slices.Concat(validateSchema(val, swagger, new_schema_name, schema_path + "[]"))
+			errors = slices.Concat(validateSchema(val, swagger, new_schema_name, schema_path + "[" + fmt.Sprint(ind) + "]"))
 		} else if items["type"] == "array" {
-			errors = validateArray(val, schema, swagger, schema_path)
+			errors = validateArray(val, items, swagger, schema_path + "[" + fmt.Sprint(ind) + "]")
 		}
 	}
 	return errors
@@ -179,7 +179,7 @@ func validateProp(prop string, val any, schema map[string]any, schema_name strin
 		} else if new_val["type"] == "object" {
 			errors = ValidateObject(schema["properties"].(map[string]any)[prop].(map[string]any), schema_name, data, swagger, schema_path)
 		} else if new_val["type"] == "array" {
-			errors = validateArray(data, schema, swagger, schema_path)
+			errors = validateArray(data, schema["properties"].(map[string]any)[prop].(map[string]any), swagger, schema_path)
 		}
 	}
 
@@ -204,7 +204,7 @@ func checkObjectPropRequired(prop string, required []any, schema_path string) st
 }
 
 func validateString(data any, schema_path string) string {
-	var error_msg string = ""
+	var error_msg string
 	_, ok := data.(string)
 	if !ok {
 		error_msg = schema_path + ": expected type string but found " + reflect.TypeOf(data).String()
