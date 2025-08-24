@@ -37,21 +37,11 @@ func Validate(payload_file_name string, swagger_file_name string, schema_name st
 	var swagger map[string]map[string]map[string]any
 	swagger_err := yaml.Unmarshal(swagger_content, &swagger)
 
-	if err != nil {
-		log.Fatal("error unmarshal: " + err.Error())
-	}
-
 	if swagger_err != nil {
 		log.Fatal("error unmarshal swagger: " + swagger_err.Error())
 	}
 
-	errors := validateSchema(data, swagger, schema_name, schema_name)
-
-	if len(errors) == 0 {
-		log.Println("data is valid!")
-	}
-
-	return errors
+	return validateSchema(data, swagger, schema_name, schema_name)
 }
 
 func validateSchema(data any, swagger map[string]map[string]map[string]any, schema_name string, schema_path string) []string {
@@ -93,12 +83,12 @@ func validateArray(data any, schema map[string]any, swagger map[string]map[strin
 		return errors
 	}
 	items := schema["items"].(map[string]any)
-	errors = validateArrayItems(items, arr, swagger, schema_path)
+	errors = validateArrayItems(items, arr, swagger, schema, schema_path)
 
 	return errors
 }
 
-func validateArrayItems(items map[string]any, data []any, swagger map[string]map[string]map[string]any, schema_path string) []string {
+func validateArrayItems(items map[string]any, data []any, swagger map[string]map[string]map[string]any, schema map[string]any, schema_path string) []string {
 	var errors []string
 	for _, val := range(data) {
 		if items["type"] == "string" {
@@ -120,7 +110,9 @@ func validateArrayItems(items map[string]any, data []any, swagger map[string]map
 			ref := items["$ref"].(string)
 			ref_splitted := strings.Split(ref, "/")
 			new_schema_name := ref_splitted[len(ref_splitted) - 1]
-			errors = slices.Concat(validateSchema(val.(map[string]any), swagger, new_schema_name, schema_path + "[]"))
+			errors = slices.Concat(validateSchema(val, swagger, new_schema_name, schema_path + "[]"))
+		} else if items["type"] == "array" {
+			errors = validateArray(val, schema, swagger, schema_path)
 		}
 	}
 	return errors
@@ -186,6 +178,8 @@ func validateProp(prop string, val any, schema map[string]any, schema_name strin
 			errors = validateSchema(data, swagger, new_schema_name, schema_path)
 		} else if new_val["type"] == "object" {
 			errors = ValidateObject(schema["properties"].(map[string]any)[prop].(map[string]any), schema_name, data, swagger, schema_path)
+		} else if new_val["type"] == "array" {
+			errors = validateArray(data, schema, swagger, schema_path)
 		}
 	}
 
