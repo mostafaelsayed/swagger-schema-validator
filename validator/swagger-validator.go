@@ -1,8 +1,8 @@
 package swagger_validator
 
 import (
-	"fmt"
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"reflect"
@@ -43,77 +43,78 @@ func Validate(payload_file_name string, swagger_file_name string, schema_name st
 
 	components := swagger["components"]
 	schemas := components["schemas"]
-
-	return validateSchema(data, schemas, swagger, schema_name, schema_name)
+	schema := schemas[schema_name].(map[string]any)
+	return validateSchema(data, schema, schemas, swagger, schema_name, schema_name)
 }
 
-func validateSchema(data any, schemas map[string]any, swagger map[string]map[string]map[string]any, schema_name string, schema_path string) []string {
+func validateVal(data any, main_schema map[string]any, schema map[string]any, schemas map[string]any, swagger map[string]map[string]map[string]any, schema_name string, schema_path string) []string {
 	var errors []string
-	schema := schemas[schema_name].(map[string]any)
+	schema_type := schema["type"]
 
-	switch schema["type"] {
-	case "object":
-		errors = ValidateObject(schemas, schema, schema, schema_name, data, swagger, schema_path)
-	case "string":
+	if schema_type == "object" {
+		errors = ValidateObject(schemas, main_schema, schema, schema_name, data, swagger, schema_path)
+	} else if schema_type == "string" {
 		error_msg := validateString(data, schema_path)
 		if error_msg != "" {
 			errors = append(errors, error_msg)
 		}
-	case "integer":
+	} else if schema_type == "integer" {
 		error_msg := validateInteger(data, schema_path)
 		if error_msg != "" {
 			errors = append(errors, error_msg)
 		}
-	case "number":
+	} else if schema_type == "number" {
 		error_msg := validateNumber(data, schema_path)
 		if error_msg != "" {
 			errors = append(errors, error_msg)
 		}
-	case "array":
-		errors = validateArray(data, schemas, schema, schema, swagger, schema_path)
+	} else if schema["$ref"] != nil {
+		ref := schema["$ref"].(string)
+		ref_splitted := strings.Split(ref, "/")
+		new_schema_name := ref_splitted[len(ref_splitted) - 1]
+		errors = validateSchema(data, main_schema, schemas, swagger, new_schema_name, schema_path)
+	} else if schema["type"] == "array" {
+		errors = validateArray(data, schemas, main_schema, schema, swagger, schema_name, schema_path)
 	}
 
 	return errors
 }
 
-func validateArray(data any, schemas map[string]any, main_schema map[string]any, schema map[string]any, swagger map[string]map[string]map[string]any, schema_path string) []string {
+func validateSchema(data any, main_schema map[string]any, schemas map[string]any, swagger map[string]map[string]map[string]any, schema_name string, schema_path string) []string {
+	var errors []string
+	schema := schemas[schema_name].(map[string]any)
+	new_errors := validateVal(data, main_schema, schema, schemas, swagger, schema_name, schema_path)
+
+	if len(new_errors) > 0 {
+		errors = slices.Concat(errors, new_errors)
+	}
+
+	return errors
+}
+
+func validateArray(data any, schemas map[string]any, main_schema map[string]any, schema map[string]any, swagger map[string]map[string]map[string]any, schema_name string, schema_path string) []string {
 	var errors []string
 	arr, ok := data.([]any)
+	if data == nil {
+		return errors
+	}
 	if !ok {
 		errors = append(errors, schema_path + ": expected array but found " + reflect.TypeOf(data).String())
 		return errors
 	}
+
 	items := schema["items"].(map[string]any)
-	errors = validateArrayItems(schemas, main_schema, items, arr, swagger, schema_path + "[]")
+	errors = validateArrayItems(schemas, main_schema, items, arr, swagger, schema_name, schema_path + "[]")
 
 	return errors
 }
 
-func validateArrayItems(schemas map[string]any, main_schema map[string]any, items map[string]any, data []any, swagger map[string]map[string]map[string]any, schema_path string) []string {
+func validateArrayItems(schemas map[string]any, main_schema map[string]any, items map[string]any, data []any, swagger map[string]map[string]map[string]any, schema_name string, schema_path string) []string {
 	var errors []string
 	for ind, val := range(data) {
-		if items["type"] == "string" {
-			error_msg := validateString(val, schema_path + "[" + fmt.Sprint(ind) + "]")
-			if error_msg != "" {
-				errors = append(errors, error_msg)
-			}
-		} else if items["type"] == "integer" {
-			error_msg := validateInteger(val, schema_path + "[" + fmt.Sprint(ind) + "]")
-			if error_msg != "" {
-				errors = append(errors, error_msg)
-			}
-		} else if items["type"] == "number" {
-			error_msg := validateNumber(val, schema_path + "[" + fmt.Sprint(ind) + "]")
-			if error_msg != "" {
-				errors = append(errors, error_msg)
-			}
-		} else if items["$ref"] != nil {
-			ref := items["$ref"].(string)
-			ref_splitted := strings.Split(ref, "/")
-			new_schema_name := ref_splitted[len(ref_splitted) - 1]
-			errors = slices.Concat(validateSchema(val, schemas, swagger, new_schema_name, schema_path + "[" + fmt.Sprint(ind) + "]"))
-		} else if items["type"] == "array" {
-			errors = validateArray(val, schemas, main_schema, items, swagger, schema_path + "[" + fmt.Sprint(ind) + "]")
+		new_errors := validateVal(val, main_schema, items, schemas, swagger, schema_name, schema_path + "[" + fmt.Sprint(ind) + "]")
+		if len(new_errors) > 0 {
+			errors = slices.Concat(errors, new_errors)
 		}
 	}
 	return errors
@@ -121,6 +122,9 @@ func validateArrayItems(schemas map[string]any, main_schema map[string]any, item
 
 func ValidateObject(schemas map[string]any, main_schema map[string]any, schema map[string]any, schema_name string, data any, swagger map[string]map[string]map[string]any, schema_path string) []string {
 	var errors []string
+	if data == nil {
+		return errors
+	}
 	data_map, ok := data.(map[string]any)
 
 	if !ok {
@@ -150,37 +154,16 @@ func ValidateObject(schemas map[string]any, main_schema map[string]any, schema m
 
 func validateProp(prop string, val any, schemas map[string]any, main_schema map[string]any, schema map[string]any, schema_name string, swagger map[string]map[string]map[string]any, data any, schema_path string) []string {
 	var errors []string
-	if data == nil {
+	if data == nil && schema["required"] != nil {
 		error_msg := checkObjectPropRequired(prop, schema["required"].([]any), schema_path)
 		if error_msg != "" {
 			errors = append(errors, error_msg)
 		}
 	} else {
 		new_val := val.(map[string]any)
-		if new_val["type"] == "string" {
-			error_msg := validateString(data, schema_path)
-			if error_msg != "" {
-				errors = append(errors, error_msg)
-			}
-		} else if new_val["type"] == "integer" {
-			error_msg := validateInteger(data, schema_path)
-			if error_msg != "" {
-				errors = append(errors, error_msg)
-			}
-		} else if new_val["type"] == "number" {
-			error_msg := validateNumber(data, schema_path)
-			if error_msg != "" {
-				errors = append(errors, error_msg)
-			}
-		} else if new_val["$ref"] != nil {
-			ref := new_val["$ref"].(string)
-			ref_splitted := strings.Split(ref, "/")
-			new_schema_name := ref_splitted[len(ref_splitted) - 1]
-			errors = validateSchema(data, schemas, swagger, new_schema_name, schema_path)
-		} else if new_val["type"] == "object" {
-			errors = ValidateObject(schemas, main_schema, schema["properties"].(map[string]any)[prop].(map[string]any), schema_name, data, swagger, schema_path)
-		} else if new_val["type"] == "array" {
-			errors = validateArray(data, schemas, main_schema, schema["properties"].(map[string]any)[prop].(map[string]any), swagger, schema_path)
+		new_errors := validateVal(data, main_schema, new_val, schemas, swagger, schema_name, schema_path)
+		if len(new_errors) > 0 {
+			errors = slices.Concat(errors, new_errors)
 		}
 	}
 
