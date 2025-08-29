@@ -1,9 +1,10 @@
 package main
 
 import (
-    "log"
-    "net/http"
+	"encoding/json"
 	"html/template"
+	"log"
+	"net/http"
 	"swagger_validator"
 )
 
@@ -42,8 +43,22 @@ func validateSwagger(w http.ResponseWriter, r *http.Request) {
    	renderTemplate(w, "templates/validation-results", p)
 }
 
+func validateApi(w http.ResponseWriter, r *http.Request) {
+	var body map[string]any
+	err := json.NewDecoder(r.Body).Decode(&body)
+	if err != nil {
+		log.Fatalf("error reading request data: %v", err)
+	} else {
+		swagger := body["swagger"].(string)
+		data := body["data"].(string)
+		errors := swagger_validator.Validate(data, swagger, "User")
+		json.NewEncoder(w).Encode(errors)
+	}
+}
+
 func main() {
 	http.HandleFunc("/", viewSwaggerValidatorForm)
 	http.HandleFunc("/validation-results", validateSwagger)
-    log.Fatal(http.ListenAndServe(":8080", nil))
+	http.HandleFunc("/api/validate", validateApi)
+    log.Fatal(http.ListenAndServe(":8081", nil))
 }
