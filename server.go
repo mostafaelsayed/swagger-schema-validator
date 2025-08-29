@@ -44,6 +44,6 @@ func validateSwagger(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	http.HandleFunc("/", viewSwaggerValidatorForm)
-	http.HandleFunc("/validate", validateSwagger)
+	http.HandleFunc("/validation-results", validateSwagger)
     log.Fatal(http.ListenAndServe(":8080", nil))
 }

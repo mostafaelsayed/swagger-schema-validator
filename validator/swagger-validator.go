@@ -143,7 +143,7 @@ func ValidateObject(schemas map[string]any, main_schema map[string]any, schema m
 func validateProp(prop string, val any, schemas map[string]any, main_schema map[string]any, schema map[string]any, schema_name string, swagger map[string]map[string]map[string]any, data any, schema_path string) []string {
 	var errors []string
 	if data == nil && schema["required"] != nil {
-		error_msg := checkObjectPropRequired(prop, schema["required"].([]any), schema_path)
+		error_msg := validatePropRequired(prop, schema["required"].([]any), schema_path)
 		if error_msg != "" {
 			errors = append(errors, error_msg)
 		}
@@ -158,17 +158,17 @@ func validateProp(prop string, val any, schemas map[string]any, main_schema map[
 	return errors
 }
 
-func checkObjectPropRequired(prop string, required []any, schema_path string) string {
+func validatePropRequired(prop string, required []any, schema_path string) string {
 	var error_msg string
 	if required != nil {
-		not_exists := false
+		is_required := false
 		for _, val1 := range(required) {
 			if val1 == prop {
-				not_exists = true
+				is_required = true
 				break
 			}
 		}
-		if (not_exists) {
+		if (is_required) {
 			error_msg =  schema_path + ": prop " + prop + " is missing but required"
 		}
 	}
