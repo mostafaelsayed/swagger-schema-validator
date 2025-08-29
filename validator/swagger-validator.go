@@ -4,38 +4,26 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"reflect"
 	"slices"
 	"strings"
+
 	"gopkg.in/yaml.v3"
 )
 
-func Validate(payload_file_name string, swagger_file_name string, schema_name string) []string {
+func Validate(payload string, swagger_content string, schema_name string) []string {
 	log.SetPrefix("Swagger_Validator: ")
 	log.SetFlags(0)
 
-	content, err := os.ReadFile(payload_file_name)
-
-	if err != nil {
-		log.Fatal("error reading data: " + err.Error())
-	}
-
 	var data map[string]any
-	err = json.Unmarshal(content, &data)
+	data_err := json.Unmarshal([]byte(payload), &data)
 
-	if err != nil {
-		log.Fatal("error unmarshal data: " + err.Error())
-	}
-
-	swagger_content, yaml_err := os.ReadFile(swagger_file_name)
-
-	if yaml_err != nil {
-		log.Fatal("error reading swagger file: " + err.Error())
+	if data_err != nil {
+		log.Fatal("error unmarshal payload: " + data_err.Error())
 	}
 
 	var swagger map[string]map[string]map[string]any
-	swagger_err := yaml.Unmarshal(swagger_content, &swagger)
+	swagger_err := yaml.Unmarshal([]byte(swagger_content), &swagger)
 
 	if swagger_err != nil {
 		log.Fatal("error unmarshal swagger: " + swagger_err.Error())
