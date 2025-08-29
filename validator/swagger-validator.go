@@ -56,6 +56,11 @@ func validateVal(data any, main_schema map[string]any, schema map[string]any, sc
 		if error_msg != "" {
 			errors = append(errors, error_msg)
 		}
+	} else if schema_type == "boolean" {
+		error_msg := validateBoolean(data, schema_path)
+		if error_msg != "" {
+			errors = append(errors, error_msg)
+		}
 	} else if schema["$ref"] != nil {
 		ref := schema["$ref"].(string)
 		ref_splitted := strings.Split(ref, "/")
@@ -205,6 +210,16 @@ func validateNumber(data any, schema_path string) string {
 	_, ok := data.(float64)
 	if !ok {
 		error_msg = schema_path + ": expected type number but found " + reflect.TypeOf(data).String()
+	}
+
+	return error_msg
+}
+
+func validateBoolean(data any, schema_path string) string {
+	var error_msg string
+	_, ok := data.(bool)
+	if !ok {
+		error_msg = schema_path + ": expected type boolean but found " + reflect.TypeOf(data).String()
 	}
 
 	return error_msg
