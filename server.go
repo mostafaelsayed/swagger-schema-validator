@@ -48,14 +48,37 @@ func viewSwaggerValidatorForm(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, "templates/validator-form", p)
 }
 
+func viewSwaggerValidatorFormWithFiles(w http.ResponseWriter, r *http.Request) {
+	p := loadPage("Swagger Validator")
+	renderTemplate(w, "templates/validator-form-with-files", p)
+}
+
 func validateSwagger(w http.ResponseWriter, r *http.Request) {
 	title := "Validation Results"
-	body := r.FormValue("payload-body")
-	swagger := r.FormValue("swagger-body")
-	errors := swagger_validator.Validate(body, swagger, "User")
-	log.Println(errors)
-	p := loadPageWithErrors(title, errors)
-	renderTemplate(w, "templates/validation-results", p)
+
+	if r.FormValue("payload-body") != "" {
+		body := r.FormValue("payload-body")
+		swagger := r.FormValue("swagger-body")
+		errors := swagger_validator.Validate(body, swagger, "User")
+		p := loadPageWithErrors(title, errors)
+		renderTemplate(w, "templates/validation-results", p)
+	} else {
+		_, _, err_data := r.FormFile("data.json")
+		if err_data != nil {
+			http.Error(w, err_data.Error(), http.StatusInternalServerError)
+			return
+		}
+		_, _, err_swagger := r.FormFile("swagger.yaml")
+		if err_swagger != nil {
+			http.Error(w, err_swagger.Error(), http.StatusInternalServerError)
+			return
+		}
+		log.Println("from file upload in browser")
+		body, swagger := handleFileUpload(w, r)
+		errors := swagger_validator.Validate(body, swagger, "User")
+		p := loadPageWithErrors(title, errors)
+		renderTemplate(w, "templates/validation-results", p)
+	}
 }
 
 func validateApi(w http.ResponseWriter, r *http.Request) {
@@ -113,19 +136,19 @@ func uploadFile(w http.ResponseWriter, r *http.Request, file_name string) (*mult
 	return handler, error_msg
 }
 
-func validateApiWithFiles(w http.ResponseWriter, r *http.Request) {
+func handleFileUpload(w http.ResponseWriter, r *http.Request) (string, string) {
 	swagger_handler, swagger_err := uploadFile(w, r, "swagger.yaml")
 
 	if swagger_err != nil {
 		log.Print(swagger_err.Error())
-		return
+		return "", ""
 	}
 
 	data_handler, data_error := uploadFile(w, r, "data.json")
 
 	if data_error != nil {
 		log.Print(data_error.Error())
-		return
+		return "", ""
 	}
 
 	log.Printf("data file name after upload: %v", data_handler.Filename)
@@ -135,7 +158,7 @@ func validateApiWithFiles(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("error reading data: %v", err.Error())
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		return "", ""
 	}
 
 	os.Remove(data_path)
@@ -147,18 +170,23 @@ func validateApiWithFiles(w http.ResponseWriter, r *http.Request) {
 	if yaml_err != nil {
 		log.Printf("error reading swagger file: %v", yaml_err.Error())
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		return "", ""
 	}
 
 	os.Remove(swagger_path)
-	
 
+	return string(data_content[:]), string(swagger_content[:])
+}
+
+func validateApiWithFiles(w http.ResponseWriter, r *http.Request) {
+	data_content, swagger_content := handleFileUpload(w, r)
 	errors := swagger_validator.Validate(string(data_content[:]), string(swagger_content[:]), "User")
 	json.NewEncoder(w).Encode(errors)
 }
 
 func main() {
 	http.HandleFunc("/", viewSwaggerValidatorForm)
+	http.HandleFunc("/files", viewSwaggerValidatorFormWithFiles)
 	http.HandleFunc("/validation-results", validateSwagger)
 	http.HandleFunc("/api/validate", validateApi)
 	http.HandleFunc("/api/validate/files", validateApiWithFiles)
