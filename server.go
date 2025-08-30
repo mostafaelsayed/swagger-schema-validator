@@ -129,7 +129,8 @@ func validateApiWithFiles(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("data file name after upload: %v", data_handler.Filename)
-	data_content, err := os.ReadFile("./uploaded/" + data_handler.Filename)
+	data_path := "./uploaded/" + data_handler.Filename
+	data_content, err := os.ReadFile(data_path)
 
 	if err != nil {
 		log.Printf("error reading data: %v", err.Error())
@@ -138,13 +139,17 @@ func validateApiWithFiles(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("swagger file name after upload: %v", swagger_handler.Filename)
-	swagger_content, yaml_err := os.ReadFile("./uploaded/" + swagger_handler.Filename)
+	swagger_path := "./uploaded/" + swagger_handler.Filename
+	swagger_content, yaml_err := os.ReadFile(swagger_path)
 
 	if yaml_err != nil {
 		log.Printf("error reading swagger file: %v", yaml_err.Error())
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+
+	os.Remove(swagger_path)
+	os.Remove(data_path)
 
 	errors := swagger_validator.Validate(string(data_content[:]), string(swagger_content[:]), "User")
 	json.NewEncoder(w).Encode(errors)
