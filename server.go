@@ -138,6 +138,8 @@ func validateApiWithFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	os.Remove(data_path)
+
 	log.Printf("swagger file name after upload: %v", swagger_handler.Filename)
 	swagger_path := "./uploaded/" + swagger_handler.Filename
 	swagger_content, yaml_err := os.ReadFile(swagger_path)
@@ -149,7 +151,7 @@ func validateApiWithFiles(w http.ResponseWriter, r *http.Request) {
 	}
 
 	os.Remove(swagger_path)
-	os.Remove(data_path)
+	
 
 	errors := swagger_validator.Validate(string(data_content[:]), string(swagger_content[:]), "User")
 	json.NewEncoder(w).Encode(errors)
