@@ -55,12 +55,13 @@ func viewSwaggerValidatorFormWithFiles(w http.ResponseWriter, r *http.Request) {
 
 func validateSwagger(w http.ResponseWriter, r *http.Request) {
 	title := "Validation Results"
-
+	schema_name := r.FormValue("schema")
+	log.Printf("schema Name res : %v", schema_name)
 	if r.FormValue("payload-body") != "" {
 		log.Println("validating using content sent from browser")
 		body := r.FormValue("payload-body")
 		swagger := r.FormValue("swagger-body")
-		errors := swagger_validator.Validate(body, swagger, "User")
+		errors := swagger_validator.Validate(body, swagger, schema_name)
 		p := loadPageWithErrors(title, errors)
 		renderTemplate(w, "templates/validation-results", p)
 	} else {
@@ -77,13 +78,14 @@ func validateSwagger(w http.ResponseWriter, r *http.Request) {
 		}
 		
 		body, swagger := handleFileUpload(w, r)
-		errors := swagger_validator.Validate(body, swagger, "User")
+		errors := swagger_validator.Validate(body, swagger, schema_name)
 		p := loadPageWithErrors(title, errors)
 		renderTemplate(w, "templates/validation-results", p)
 	}
 }
 
 func validateApi(w http.ResponseWriter, r *http.Request) {
+	schema_name := r.URL.Query().Get("schema")
 	var body map[string]any
 	err := json.NewDecoder(r.Body).Decode(&body)
 	if err != nil {
@@ -91,7 +93,7 @@ func validateApi(w http.ResponseWriter, r *http.Request) {
 	} else {
 		swagger := body["swagger"].(string)
 		data := body["data"].(string)
-		errors := swagger_validator.Validate(data, swagger, "User")
+		errors := swagger_validator.Validate(data, swagger, schema_name)
 		json.NewEncoder(w).Encode(errors)
 	}
 }
@@ -181,8 +183,9 @@ func handleFileUpload(w http.ResponseWriter, r *http.Request) (string, string) {
 }
 
 func validateApiWithFiles(w http.ResponseWriter, r *http.Request) {
+	schema_name := r.URL.Query().Get("schema")
 	data_content, swagger_content := handleFileUpload(w, r)
-	errors := swagger_validator.Validate(string(data_content[:]), string(swagger_content[:]), "User")
+	errors := swagger_validator.Validate(string(data_content[:]), string(swagger_content[:]), schema_name)
 	json.NewEncoder(w).Encode(errors)
 }
 

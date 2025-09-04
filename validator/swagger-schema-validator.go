@@ -18,14 +18,16 @@ func Validate(payload string, swagger_content string, schema_name string) []stri
 	data_err := json.Unmarshal([]byte(payload), &data)
 
 	if data_err != nil {
-		log.Fatal("error unmarshal payload: " + data_err.Error())
+		log.Printf("error unmarshal payload: %v", data_err.Error())
+		return []string{data_err.Error()}
 	}
 
 	var swagger map[string]map[string]map[string]any
 	swagger_err := yaml.Unmarshal([]byte(swagger_content), &swagger)
 
 	if swagger_err != nil {
-		log.Fatal("error unmarshal swagger: " + swagger_err.Error())
+		log.Printf("error unmarshal swagger: %v", swagger_err.Error())
+		return []string{swagger_err.Error()}
 	}
 
 	components := swagger["components"]
@@ -91,7 +93,7 @@ func validateArray(data any, schemas map[string]any, main_schema map[string]any,
 		return errors
 	}
 	if !ok {
-		errors = append(errors, schema_path + ": expected array but found " + reflect.TypeOf(data).String())
+		errors = append(errors, schema_path + ": expected array but found " + get_type(data))
 		return errors
 	}
 
@@ -120,7 +122,7 @@ func ValidateObject(schemas map[string]any, main_schema map[string]any, schema m
 	data_map, ok := data.(map[string]any)
 
 	if !ok {
-		errors = append(errors, schema_path + ": type expected is object but found " + reflect.TypeOf(data).String())
+		errors = append(errors, schema_path + ": type expected is object but found " + get_type(data))
 		return errors
 	}
 	props, ok := schema["properties"].(map[string]any)
@@ -180,45 +182,65 @@ func validatePropRequired(prop string, required []any, schema_path string) strin
 }
 
 func validateString(data any, schema_path string) string {
+	if data == nil {
+		return ""
+	}
 	var error_msg string
 	_, ok := data.(string)
 	if !ok {
-		error_msg = schema_path + ": expected type string but found " + reflect.TypeOf(data).String()
+		error_msg = schema_path + ": expected type string but found " + get_type(data)
 	}
 
 	return error_msg
 }
 
 func validateInteger(data any, schema_path string) string {
+	if data == nil {
+		return ""
+	}
 	var error_msg string
 	_, ok := data.(float64)
+	log.Println("schema path int: " + schema_path)
 	if !ok {
-		error_msg = schema_path + ": expected type integer but found " + reflect.TypeOf(data).String()
+		error_msg = schema_path + ": expected type integer but found " + get_type(data)
 	} else {
 		str_val := fmt.Sprint(data)
 		if strings.Contains(str_val, ".") {
-			error_msg = schema_path + ": expected type integer but found " + reflect.TypeOf(data).String()
+			error_msg = schema_path + ": expected type integer but found " + get_type(data)
 		}
 	}
 
 	return error_msg
 }
 
+func get_type(data any) string {
+	if data == nil {
+		return "nil"
+	}
+	return reflect.TypeOf(data).Name()
+}
+
 func validateNumber(data any, schema_path string) string {
+	if data == nil {
+		return ""
+	}
 	var error_msg string
 	_, ok := data.(float64)
 	if !ok {
-		error_msg = schema_path + ": expected type number but found " + reflect.TypeOf(data).String()
+		error_msg = schema_path + ": expected type number but found " + get_type(data)
 	}
 
 	return error_msg
 }
 
 func validateBoolean(data any, schema_path string) string {
+	if data == nil {
+		return ""
+	}
 	var error_msg string
 	_, ok := data.(bool)
 	if !ok {
-		error_msg = schema_path + ": expected type boolean but found " + reflect.TypeOf(data).String()
+		error_msg = schema_path + ": expected type boolean but found " + get_type(data)
 	}
 
 	return error_msg

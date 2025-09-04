@@ -2,12 +2,14 @@
 
 <h1>{{.Title}}</h1>
 
-<form action="/validation-results" enctype="multipart/form-data" method="POST">
+<form action="/validation-results?schema={{.SchemaName}}" enctype="multipart/form-data" method="POST">
     <div>
         <label for="data">Upload Your Payload</label>
         <input value="data-file" id="data" type="file" name="data.json" />
         <label for="swagger">Upload Your Swagger</label>
         <input value="swagger-file" id="swagger" type="file" name="swagger.yaml" />
+        <label for="schema">Schema Name</label>
+        <input type="text" placeholder="Enter Schema Name" id="schema" name="schema" />
     </div>
     <br/>
     <div><input type="submit" value="Validate"></div>
