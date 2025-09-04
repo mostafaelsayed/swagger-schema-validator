@@ -15,7 +15,9 @@ import (
 func Validate(payload string, swagger_content string, schema_name string) []string {
 	log.SetPrefix("Swagger Validator Log [" + time.Now().Format("2006-01-02T15:04:05.000Z") + "] ")
 	log.SetFlags(0)
-
+	if schema_name == "" {
+		return []string{"Please specify a schema name"}
+	}
 	var data map[string]any
 	data_err := json.Unmarshal([]byte(payload), &data)
 
@@ -34,8 +36,13 @@ func Validate(payload string, swagger_content string, schema_name string) []stri
 
 	components := swagger["components"]
 	schemas := components["schemas"]
-	schema := schemas[schema_name].(map[string]any)
-	return validateSchema(data, schema, schemas, swagger, schema_name, schema_name)
+	schema := schemas[schema_name]
+	if schema == nil {
+		return []string{"Unknown schema " + schema_name}
+	}
+	schema_map := schema.(map[string]any)
+	
+	return validateSchema(data, schema_map, schemas, swagger, schema_name, schema_name)
 }
 
 func validateVal(data any, main_schema map[string]any, schema map[string]any, schemas map[string]any, swagger map[string]map[string]map[string]any, schema_name string, schema_path string) []string {
