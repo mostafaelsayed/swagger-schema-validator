@@ -7,11 +7,13 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"time"
+
 	"gopkg.in/yaml.v3"
 )
 
 func Validate(payload string, swagger_content string, schema_name string) []string {
-	log.SetPrefix("Swagger_Validator: ")
+	log.SetPrefix("Swagger Validator Log [" + time.Now().Format("2006-01-02T15:04:05.000Z") + "] ")
 	log.SetFlags(0)
 
 	var data map[string]any
@@ -200,7 +202,6 @@ func validateInteger(data any, schema_path string) string {
 	}
 	var error_msg string
 	_, ok := data.(float64)
-	log.Println("schema path int: " + schema_path)
 	if !ok {
 		error_msg = schema_path + ": expected type integer but found " + get_type(data)
 	} else {

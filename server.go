@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -9,10 +11,9 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
-	"swagger_validator"
 	"path/filepath"
-	"crypto/rand"
-	"encoding/hex"
+	"swagger_validator"
+	"time"
 )
 
 type Page struct {
@@ -56,7 +57,6 @@ func viewSwaggerValidatorFormWithFiles(w http.ResponseWriter, r *http.Request) {
 func validateSwagger(w http.ResponseWriter, r *http.Request) {
 	title := "Validation Results"
 	schema_name := r.FormValue("schema")
-	log.Printf("schema Name res : %v", schema_name)
 	if r.FormValue("payload-body") != "" {
 		log.Println("validating using content sent from browser")
 		body := r.FormValue("payload-body")
@@ -65,7 +65,7 @@ func validateSwagger(w http.ResponseWriter, r *http.Request) {
 		p := loadPageWithErrors(title, errors)
 		renderTemplate(w, "templates/validation-results", p)
 	} else {
-		log.Println("validating using file upload in browser")
+		log.Println("validating using file upload from browser")
 		_, _, err_data := r.FormFile("data.json")
 		if err_data != nil {
 			http.Error(w, err_data.Error(), http.StatusInternalServerError)
@@ -190,6 +190,8 @@ func validateApiWithFiles(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	log.SetPrefix("Server Log [" + time.Now().Format("2006-01-02T15:04:05.000Z") + "] ")
+	log.SetFlags(0)
 	http.HandleFunc("/", viewSwaggerValidatorForm)
 	http.HandleFunc("/files", viewSwaggerValidatorFormWithFiles)
 	http.HandleFunc("/validation-results", validateSwagger)
