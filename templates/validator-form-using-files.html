@@ -2,7 +2,7 @@
 
 <h1>{{.Title}}</h1>
 
-<form action="/validation-results?schema={{.SchemaName}}" enctype="multipart/form-data" method="POST">
+<form action="/validation-results" enctype="multipart/form-data" method="POST">
     <div>
         <label for="data">Upload Your Payload</label>
         <input value="data-file" id="data" type="file" name="data.json" />
