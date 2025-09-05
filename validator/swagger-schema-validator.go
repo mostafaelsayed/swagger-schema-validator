@@ -102,7 +102,7 @@ func validateArray(data any, schemas map[string]any, main_schema map[string]any,
 		return errors
 	}
 	if !ok {
-		errors = append(errors, schema_path + ": expected array but found " + get_type(data))
+		errors = append(errors, schema_path + ": expected array but found " + getType(data))
 		return errors
 	}
 
@@ -131,7 +131,7 @@ func ValidateObject(schemas map[string]any, main_schema map[string]any, schema m
 	data_map, ok := data.(map[string]any)
 
 	if !ok {
-		errors = append(errors, schema_path + ": type expected is object but found " + get_type(data))
+		errors = append(errors, schema_path + ": type expected is object but found " + getType(data))
 		return errors
 	}
 	props, ok := schema["properties"].(map[string]any)
@@ -197,7 +197,7 @@ func validateString(data any, schema_path string) string {
 	var error_msg string
 	_, ok := data.(string)
 	if !ok {
-		error_msg = schema_path + ": expected type string but found " + get_type(data)
+		error_msg = schema_path + ": expected type string but found " + getType(data)
 	}
 
 	return error_msg
@@ -210,18 +210,18 @@ func validateInteger(data any, schema_path string) string {
 	var error_msg string
 	_, ok := data.(float64)
 	if !ok {
-		error_msg = schema_path + ": expected type integer but found " + get_type(data)
+		error_msg = schema_path + ": expected type integer but found " + getType(data)
 	} else {
 		str_val := fmt.Sprint(data)
 		if strings.Contains(str_val, ".") {
-			error_msg = schema_path + ": expected type integer but found " + get_type(data)
+			error_msg = schema_path + ": expected type integer but found " + getType(data)
 		}
 	}
 
 	return error_msg
 }
 
-func get_type(data any) string {
+func getType(data any) string {
 	if data == nil {
 		return "nil"
 	}
@@ -235,7 +235,7 @@ func validateNumber(data any, schema_path string) string {
 	var error_msg string
 	_, ok := data.(float64)
 	if !ok {
-		error_msg = schema_path + ": expected type number but found " + get_type(data)
+		error_msg = schema_path + ": expected type number but found " + getType(data)
 	}
 
 	return error_msg
@@ -248,7 +248,7 @@ func validateBoolean(data any, schema_path string) string {
 	var error_msg string
 	_, ok := data.(bool)
 	if !ok {
-		error_msg = schema_path + ": expected type boolean but found " + get_type(data)
+		error_msg = schema_path + ": expected type boolean but found " + getType(data)
 	}
 
 	return error_msg
