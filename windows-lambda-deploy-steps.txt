@@ -1,0 +1,4 @@
+# Inside root directory, open cmd and run the following
+go build -tags lambda.norpc -o lambda-build/bootstrap lambda.go
+%USERPROFILE%/go/bin/build-lambda-zip.exe -o lambda-build/myFunction.zip lambda-build/bootstrap
+aws lambda create-function --function-name myFunction --runtime provided.al2023 --handler bootstrap --role <ROLE_ARN> --zip-file fileb://lambda-build/myFunction.zip

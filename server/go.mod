@@ -2,11 +2,10 @@ module main
 
 go 1.25.0
 
-replace swagger_validator => ./validator
+replace swagger_validator => ../validator
 
 require swagger_validator v1.0.0
 
 require (
-	github.com/aws/aws-lambda-go v1.49.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
