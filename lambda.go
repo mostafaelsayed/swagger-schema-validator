@@ -9,6 +9,9 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
+log.SetPrefix("Server Log [" + time.Now().Format("2006-01-02T15:04:05.000Z") + "] ")
+log.SetFlags(0)
+
 func validateApi(body map[string]any) ([]string, error) {
 	schema_name := body["schema"].(string)
 	swagger := body["swagger"].(string)
@@ -18,8 +21,6 @@ func validateApi(body map[string]any) ([]string, error) {
 }
 
 func handleRequest(ctx context.Context, event json.RawMessage) ([]string, error) {
-	log.SetPrefix("Server Log [" + time.Now().Format("2006-01-02T15:04:05.000Z") + "] ")
-	log.SetFlags(0)
 	var request map[string]any
 	if err := json.Unmarshal(event, &request); err != nil {
 		log.Printf("Failed to unmarshal event: %v", err)
